@@ -48,15 +48,16 @@ loadEntity = (options) =>
             return reject error if error?
             return fulfill response
 
-addDelay = () =>
+addDelay = (count) =>
     return new promise (fulfill, reject) =>
         resolve = =>
             return fulfill "succeess"
-        setTimeout resolve, opts.delay
+        setTimeout resolve, opts.delay * count
 
 
 getServiceDomains = () =>
     return new promise (fulfill, reject) =>
+        console.log "Making the call to backend"
         loadEntity  url:opts.url+"/serviceDomains", method:'GET', headers:{'Authorization': "Bearer #{opts.token}"}
         . then (resp) =>
             log.info "service domains", domains:(JSON.parse resp)
@@ -66,30 +67,24 @@ getServiceDomains = () =>
         , (error) =>
             return reject error
 
-deleteDomain = (domain) =>
-    return new promise (fulfill, reject) =>
-        console.log "Deleting Domain with id #{domain.id}"
-        loadEntity url:opts.url+"/serviceDomains/#{domain.id}", method: 'DELETE', headers:"Authorization":"Bearer #{opts.token}"
-        . then (resp) =>
-            log.info "domain deleted", resp:resp
-            addDelay()
-            . then (resp) =>
-                return fulfill "success"
-        , (error) =>
-            log.error "failed to delete domain", error:error
-            return reject error
-
 deleteServiceDomains = () =>
-    return new promise (fulfill, reject) =>
-        actions = []
-        opts.domains.map (domain) =>
-            actions.push(deleteDomain domain)
+    actions = []
+    log.info method:'Delete Domains', actions:actions
+    count = 0
+    for domain in opts.domains
+        count++
+        do (domain, count) =>
+            deletecall = =>
+                console.log "deleting domain with id #{domain.id}"
+                loadEntity url:opts.url+"/serviceDomains/#{domain.id}", method: 'DELETE', headers:"Authorization":"Bearer #{opts.token}"
+                . then (resp) =>
+                    console.log "deleted domain with id #{domain.id}"
+                , (error) =>
+                    console.log "failed to delete domain with id #{domain.id}"
 
-        log.info method:'Delete Domains', actions:actions
-        opts.domains.filter (domain) =>
-            addDelay()
-            . then (resp) =>
-                deleteDomain domain
+
+            console.log "sleeping by #{opts.delay * count} ms for domain #{domain.id}"
+            setTimeout deletecall, (opts.delay * count)
 
 
 opts =
@@ -109,8 +104,8 @@ log = new (require 'bunyan')
 console.log 'options passed in are ', opts
 getToken()
 . then (getServiceDomains)
-. then (deleteServiceDomains)
 . then (resp) =>
+    deleteServiceDomains()
     console.log "success"
 , (error) =>
     console.log "error ", error

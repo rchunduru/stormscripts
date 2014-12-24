@@ -61,6 +61,7 @@ getAccounts = () =>
         . then (resp) =>
             log.info "accounts list", accounts:(JSON.parse resp)
             opts.accounts = (JSON.parse resp).accounts
+            return reject new Error "no accounts found" if opts.accounts.length is 0
             console.log opts.accounts
             return fulfill "success"
         , (error) =>
@@ -81,15 +82,19 @@ deleteAccount = (account) =>
 
 deleteAccounts = () =>
     return new promise (fulfill, reject) =>
-        actions = []
-        opts.accounts.map (account) =>
-            actions.push(deleteAccount account)
 
-        log.info method:'Delete Accounts', actions:actions
+        log.info method:'Delete Accounts'
         opts.accounts.filter (account) =>
             addDelay()
             . then (resp) =>
-                deleteAccount account
+                switch account.id
+                    when 'ht-provider', 'dt-provider', 'cpn-provider'
+                        console.log "skipping account with name #{account.name}"
+                        return
+                    else
+                        console.log "Deleting account with id #{account.id}"
+                        deleteAccount account
+                        return
 
 
 opts =
